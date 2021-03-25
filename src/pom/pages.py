@@ -1,6 +1,7 @@
 import random
 import re
 import time
+import yaml
 
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -9,14 +10,12 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 
 from pom.element import BasePageElement
-from pom.locators import (MainPageLocators, SearchResultsPageLocators)
+from pom.locators import (CartPageLocator,
+                          MainPageLocators,
+                          SearchResultsPageLocators,
+                          SignInOutLocator)
 
-
-# class SearchTextElement(BasePageElement):
-#     """This class gets the search text from the specified locator"""
-
-#     #The locator for search box where search string is entered
-#     locator = 'q'
+LOGIN_DATA_PATH = r'./data/logins.yml'
 
 class BasePage(object):
     """Base class to initialize the base page that will be called from all pages"""
@@ -44,9 +43,12 @@ class BasePage(object):
     def enter_text(self, *locator, text):
         return WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(locator)).send_keys(text)
 
-    # def hover(self, locator):
-    #     element = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(locator))
-    #     ActionChains(self.driver).move_to_element(element).perform()
+    def clear_text(self, *locator, text):
+        return WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(locator)).clear()
+
+    def hover(self, *locator):
+        element = WebDriverWait(self.driver, 10).until(EC.visibility_of_element_located(locator))
+        ActionChains(self.driver).move_to_element(element).perform()
 
     def list_of_items(self, *locator, text):
         return self.driver.find_element(*locator).find_elements_by_tag_name(text)
@@ -125,7 +127,7 @@ class CartModal(BasePage):
     '''Methods for the modal cart items go here.'''
 
     def __init__(self, driver):
-        self.modal = driver.find_element(*MainPageLocators.MODAL_CONFIRM)
+        self.modal = driver.find_element(*MainPageLocators.MODAL_CONFIRM)  
 
     def confirm_cart_product_name(self, cart_prod_name):
         '''Confirms cart product name.'''
@@ -145,7 +147,6 @@ class CartModal(BasePage):
 
     def confirm_block_product_total(self, block_prod_price):
         '''Confirms block product total.'''
-        # import pdb; pdb.set_trace()
         return bool(block_prod_price == float(self.modal.find_element(*MainPageLocators.BLOCK_PROD_TOTAL).text.replace('$', '')))
 
     def confirm_shipping_cost(self, shipping_cost):
@@ -195,16 +196,106 @@ class SearchResultsPage(BasePage):
         # check for the row div to appear.
         return self.visible(*SearchResultsPageLocators.ROW_VIEW)
 
+
 class SignInPage(BasePage):
     """Sign in Page. Test Class"""
 
-    # def click_search_result(self):
-    #     self.click(Locators.)
+    def click_signin_page(self):
+        '''Go to the sign in page and check for authentication element div.'''
+        self.hover(*MainPageLocators.SIGN_IN)
+        self.click(*MainPageLocators.SIGN_IN)
+        return self.check_authentication_page()
+
+    def click_logout(self):
+        '''Go to the sign in page and check for authnetication element div.'''
+        self.hover(*SignInOutLocator.LOGOUT_BTN)
+        self.click(*SignInOutLocator.LOGOUT_BTN)
+        return self.check_authentication_page()
+
+    def check_authentication_page(self):
+        '''Are we in the authentication page?'''
+        return self.visible(*SignInOutLocator.AUTHENTICATION)
+
+    def fillout_authenticator(self, username, password):
+        '''Fill out the authenticator.'''
+        # First clear out input.
+        self.clear_text(*SignInOutLocator.EMAIL_INPUT, text='')
+        self.clear_text(*SignInOutLocator.PASSWORD_INPUT, text='')
+
+        # Now fill out input boxes and sign in... or try.
+        self.enter_text(*SignInOutLocator.EMAIL_INPUT, text=username)
+        self.enter_text(*SignInOutLocator.PASSWORD_INPUT, text=password)
+        self.hover(*SignInOutLocator.SUBMIT_BTN)
+        self.click(*SignInOutLocator.SUBMIT_BTN)
+
+    def check_login_behavior(self):
+        '''Read from a YAML file to get test data and conditions for testing login.'''
+        with open(LOGIN_DATA_PATH, 'r') as file:
+            userlist = yaml.load(file, Loader=yaml.FullLoader)
+            for num, item in enumerate(userlist['logins']):
+                print ('Test Case: {}, Description: {}'.format(num, item['use_case']))
+                self.fillout_authenticator(item['username'], item['password'])
+
+                # We handle the passing test case differently.
+                if 'My account' != item['expect']:
+                    assert(self.visible(*SignInOutLocator.ALERT_TEXT))
+                    assert(item['expect'] == self.driver.find_element(*SignInOutLocator.ALERT_TEXT).text)
+                else:
+                    assert(self.visible(*SignInOutLocator.LOGGED_IN_TEXT))
+                    assert(item['expect'] == self.driver.find_element(*SignInOutLocator.LOGGED_IN_TEXT).text)
 
 class CartPage(BasePage):
     """Search cart page action methods defined here."""
 
-    def is_results_found(self):
-        # Probably should search for this text in the specific page
-        # element, but as for now it works fine
-        return "No results found." not in self.driver.page_source
+    def click_cart_page(self):
+        '''Go to the sign in page and check for authnetication element div.'''
+        self.hover(*MainPageLocators.CART_PAGE)
+        self.click(*MainPageLocators.CART_PAGE)
+        return bool(self.visible(*CartPageLocator.CART_TABLE))
+
+    def check_cart_correctness(self, shipping_price, cart_items):
+        '''Check the cart items for correctness in the cart page.'''
+        total_product = float('{0:.2f}'.format(sum([i['price']*i['number_of_items'] for i in cart_items])))
+        grand_total = total_product + shipping_price
+        return(total_product == float(self.driver.find_element(*CartPageLocator.TOTAL_PROD).text.replace('$', '')) and
+               shipping_price == float(self.driver.find_element(*CartPageLocator.TOTAL_SHIPPING).text.replace('$', '')) and
+               grand_total == float(self.driver.find_element(*CartPageLocator.SUB_TOTAL).text.replace('$', '')) and
+               grand_total == float(self.driver.find_element(*CartPageLocator.TOTAL_PRICE).text.replace('$', '')))
+
+    def add_product_item(self):
+        '''Adds a product from the first line of the cart. QTY should be 2.
+        returns (tuple): (<item qty>, <total item price>)'''
+        self.hover(*CartPageLocator.FIRST_ROW_ADD)
+        self.click(*CartPageLocator.FIRST_ROW_ADD)
+        # Wait a bit for the qty to register.
+        time.sleep(1)
+        assert(self.visible(*CartPageLocator.FIRST_ROW_QTY))
+        assert(self.visible(*CartPageLocator.FIRST_ROW_TOTAL))
+        return (int(self.driver.find_element(*CartPageLocator.FIRST_ROW_QTY).get_attribute('value')),
+                float(self.driver.find_element(*CartPageLocator.FIRST_ROW_TOTAL).text.replace('$', '')))
+
+    def delete_product_item(self):
+        '''Subtracts a product from the first line in the cart. QTY should be 1.
+        returns (tuple): (<item qty>, <total item price>)'''
+        self.hover(*CartPageLocator.FIRST_ROW_SUBTRACT)
+        self.click(*CartPageLocator.FIRST_ROW_SUBTRACT)
+        # Wait a bit for the qty to register.
+        time.sleep(1)
+        assert(self.visible(*CartPageLocator.FIRST_ROW_QTY))
+        assert(self.visible(*CartPageLocator.FIRST_ROW_TOTAL))
+        return (int(self.driver.find_element(*CartPageLocator.FIRST_ROW_QTY).get_attribute('value')),
+                float(self.driver.find_element(*CartPageLocator.FIRST_ROW_TOTAL).text.replace('$', '')))
+
+    def remove_product_item(self):
+        '''Removes to the first line product item.'''
+        self.hover(*CartPageLocator.FIRST_ROW_SUBTRACT)
+        self.click(*CartPageLocator.FIRST_ROW_SUBTRACT)
+
+    def checkout(self):
+        '''Click on the checkout button.'''
+        self.hover(*CartPageLocator.TO_CHECKOUT)
+        self.click(*CartPageLocator.TO_CHECKOUT)
+
+    def is_address_page(self):
+        '''Are we in the address page whcih shows authentication worked with cart items.'''
+        return self.visible(*CartPageLocator.ADDRESS)
