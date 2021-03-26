@@ -87,8 +87,8 @@ This program run in pytest.
    python -m pytest
    ```
 3) That's it. It should ruun with the following output if successful.
-   ```sh
-   (venv) frank.tuzzolino@frank-tuzzolino--MacBookPro16 src % python -m pytest             
+```
+(venv) frank.tuzzolino@frank-tuzzolino--MacBookPro16 src % python -m pytest             
 =============================================================== test session starts ================================================================
 platform darwin -- Python 3.8.2, pytest-6.2.2, py-1.10.0, pluggy-0.13.1
 rootdir: /Users/frank.tuzzolino/selenium_coding_task/src
@@ -98,5 +98,5 @@ selenium_test.py .................                                              
 
 ========================================================== 17 passed in 62.53s (0:01:02) ===========================================================
 (venv) frank.tuzzolino@frank-tuzzolino--MacBookPro16 src % 
-   ```
+```
 
