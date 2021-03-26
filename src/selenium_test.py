@@ -51,8 +51,7 @@ def test_page_loads(browser):
 def test_cart_is_empty_on_load(browser):
     '''Test to make sure the cart is empty on the initial home page load.'''
     homepage = HomePage(browser)
-    assert(homepage.cart_quantity != 0)
-    assert(homepage.cart_no_quantity)
+    assert(homepage.cart_no_quantity() == '(empty)')
 
 def test_search_empty(browser):
     '''Test to make sure that not inputing a search term that the user gets
@@ -132,6 +131,23 @@ def test_load_cart_home_page(browser):
         # Clost the modal that pops up after checking the data is correct.
         model.close_modal()
 
+def test_cart_cookies(browser):
+    '''Now that the cart is loaded. Let's test that the cookies can be removed and added.'''
+    homepage = HomePage(browser)
+    qty_total = sum([i['number_of_items'] for i in cart_list])
+
+    # Get current cookies, delete and refresh page to check cart items.
+    cookies = browser.get_cookies()
+    browser.delete_all_cookies()
+    browser.refresh()
+    assert(homepage.cart_no_quantity() == '(empty)')
+
+    # Restore cookies and check cart qty to make sure the items have been restored.
+    [browser.add_cookie(c) for c in cookies]
+    browser.refresh()
+    
+    assert(homepage.cart_quantity() == qty_total)
+
 def test_load_cart_page(browser):
     '''Go to the cart page for checkout. Make sure we are in the page.'''
     cartpage = CartPage(browser)
@@ -163,7 +179,7 @@ def test_remove_product_from_cart(browser):
 def test_remove_item_from_cart(browser):
     '''Check to make sure a product can be removed from the cart list.'''
     cartpage = CartPage(browser)
-    cartpage.delete_product_item()
+    cartpage.remove_product_item()
     del(cart_list[0])
     assert(cartpage.check_cart_correctness(total_shipping_cost, cart_list))
 

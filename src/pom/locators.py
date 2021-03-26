@@ -8,8 +8,8 @@ class MainPageLocators(object):
 
     # Home page cart items
     CART_ITEMS = (By.ID, 'homefeatured')
-    CART_QUANTITY = (By.CLASS_NAME, 'ajax_cart_quantity')
-    CART_NO_QUANITY = (By.CLASS_NAME, 'ajax_cart_no_product')
+    CART_QUANTITY = (By.XPATH, '//*[@id="header"]/div[3]/div/div/div[3]/div/a/span[1]')
+    CART_NO_QUANTITY = (By.XPATH, '//*[@id="header"]/div[3]/div/div/div[3]/div/a/span[5]')
 
     # Hover Items to add to cart.
     BLOCK_PRODUCT = (By.CLASS_NAME, 'ajax_block_product')
@@ -77,6 +77,8 @@ class SignInOutLocator(object):
     PASSWORD_INPUT = (By.XPATH, '//*[@id="passwd"]')
     SUBMIT_BTN = (By.XPATH, '//*[@id="SubmitLogin"]')
     LOGOUT_BTN = (By.XPATH, '//*[@id="header"]/div[2]/div/div/nav/div[2]/a')
+    SIGN_IN_BOX = (By.XPATH, '//*[@id="header"]/div[2]/div/div/nav/div[1]/a/span')
+    SIGN_IN_BOX_CLICK = (By.XPATH, '//*[@id="header"]/div[2]/div/div/nav/div[1]/a')
 
     # Confirmation locators.
     # Text to read: 'AUTHENTICATION'

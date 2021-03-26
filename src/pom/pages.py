@@ -74,11 +74,11 @@ class HomePage(BasePage):
 
     def cart_quantity(self):
         '''Gets the scalar number of the number of items in a cart.'''
-        return int(self.driver.find_element(*MainPageLocators.CART_QUANTITY).get_value())
+        return int(self.driver.find_element(*MainPageLocators.CART_QUANTITY).text)
 
     def cart_no_quantity(self):
         '''Get the value from the cart if it is expected to be empty.'''
-        return bool(True if self.driver.find_element(*MainPageLocators.CART_NO_QUANTITY).get_value() == "(empty)" else False)
+        return self.driver.find_element(*MainPageLocators.CART_NO_QUANTITY).text
 
     def search_and_click(self, text):
         '''Search and click results.
@@ -216,6 +216,30 @@ class SignInPage(BasePage):
         '''Are we in the authentication page?'''
         return self.visible(*SignInOutLocator.AUTHENTICATION)
 
+    def username_signin(self):
+        '''Is the username sign on box there?'''
+        return self.driver.find_element(*SignInOutLocator.SIGN_IN_BOX_CLICK).text
+
+    def check_username_signin(self, username):
+        '''Check that the username is correct.'''
+        assert(self.visible(*SignInOutLocator.SIGN_IN_BOX))
+        sign_in = self.driver.find_element(*SignInOutLocator.SIGN_IN_BOX).text
+
+        # Reg ex to get username and domain.
+        re_un = re.compile(r'^(?P<username>.+)\@(?P<domain>.+)\..+$')
+        re_un_obj = re_un.match(username)
+        if re_un_obj:
+            username = re_un_obj.group('username')
+            domain = re_un_obj.group('domain')
+            re_sign = re.compile(r'^{}\s+{}$'.format(username, domain))
+            re_sign_obj = re_sign.match(sign_in)
+            if re_sign_obj:
+                return True
+            else:
+                return False
+        else:
+            return False
+
     def fillout_authenticator(self, username, password):
         '''Fill out the authenticator.'''
         # First clear out input.
@@ -268,7 +292,7 @@ class CartPage(BasePage):
         self.hover(*CartPageLocator.FIRST_ROW_ADD)
         self.click(*CartPageLocator.FIRST_ROW_ADD)
         # Wait a bit for the qty to register.
-        time.sleep(1)
+        time.sleep(2)
         assert(self.visible(*CartPageLocator.FIRST_ROW_QTY))
         assert(self.visible(*CartPageLocator.FIRST_ROW_TOTAL))
         return (int(self.driver.find_element(*CartPageLocator.FIRST_ROW_QTY).get_attribute('value')),
@@ -280,7 +304,7 @@ class CartPage(BasePage):
         self.hover(*CartPageLocator.FIRST_ROW_SUBTRACT)
         self.click(*CartPageLocator.FIRST_ROW_SUBTRACT)
         # Wait a bit for the qty to register.
-        time.sleep(1)
+        time.sleep(2)
         assert(self.visible(*CartPageLocator.FIRST_ROW_QTY))
         assert(self.visible(*CartPageLocator.FIRST_ROW_TOTAL))
         return (int(self.driver.find_element(*CartPageLocator.FIRST_ROW_QTY).get_attribute('value')),
@@ -288,8 +312,9 @@ class CartPage(BasePage):
 
     def remove_product_item(self):
         '''Removes to the first line product item.'''
-        self.hover(*CartPageLocator.FIRST_ROW_SUBTRACT)
-        self.click(*CartPageLocator.FIRST_ROW_SUBTRACT)
+        self.hover(*CartPageLocator.FIRST_ROW_REMOVE)
+        self.click(*CartPageLocator.FIRST_ROW_REMOVE)
+        time.sleep(2)
 
     def checkout(self):
         '''Click on the checkout button.'''
